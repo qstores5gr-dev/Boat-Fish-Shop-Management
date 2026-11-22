@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="si">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10243a">
+  <meta name="description" content="බෝට්ටු කරවල වෙළඳසැල කළමනාකරණ පද්ධතිය">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <title>බෝට්ටු කරවල වෙළඳසැල</title>
+</head>
+<body>
+  <section id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="brand-mark">🐟</div>
+      <p class="eyebrow">SHOP MANAGEMENT SYSTEM</p>
+      <h1>බෝට්ටු කරවල<br>වෙළඳසැල</h1>
+      <p class="muted">වැලිකඩ, අධිකාරිගම</p>
+      <div class="login-divider"></div>
+      <h2>ඇප් එකට පිවිසෙන්න</h2>
+      <p class="muted small">ඔබගේ ගිණුම තෝරන්න</p>
+      <div class="user-choices">
+        <button class="user-choice king" data-user="KING">
+          <span class="avatar">K</span><span><strong>KING</strong><small>නිල් ගිණුම</small></span><span class="choice-arrow">›</span>
+        </button>
+        <button class="user-choice queen" data-user="QUEEN">
+          <span class="avatar">Q</span><span><strong>QUEEN</strong><small>කොළ ගිණුම</small></span><span class="choice-arrow">›</span>
+        </button>
+      </div>
+      <p class="login-note">මෙය ආරම්භක සැලසුම් අනුවාදයයි. ආරක්ෂිත මුරපද පිවිසුම සහ දත්ත සුරැකුම ඊළඟ සංවර්ධන අදියරේදී සකස් කෙරේ.</p>
+    </div>
+  </section>
+
+  <div id="app" class="app hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="side-brand"><span class="brand-mini">🐟</span><div><strong>බෝට්ටු කරවල</strong><small>වෙළඳසැල</small></div></div>
+      <div class="nav-label">ප්‍රධාන මෙනුව</div>
+      <nav id="navigation">
+        <button class="nav-item active" data-page="dashboard"><span>▦</span> Dashboard</button>
+        <button class="nav-item" data-page="pos"><span>▣</span> විකුණුම් / POS</button>
+        <button class="nav-item" data-page="purchases"><span>＋</span> මිලදී ගැනීම්</button>
+        <button class="nav-item" data-page="stock"><span>◫</span> තොග කළමනාකරණය</button>
+        <button class="nav-item" data-page="customers"><span>♙</span> පාරිභෝගික ණය</button>
+        <button class="nav-item" data-page="suppliers"><span>♧</span> සැපයුම්කරුවන්</button>
+        <button class="nav-item" data-page="bills"><span>▤</span> බිල්පත්</button>
+        <button class="nav-item" data-page="expenses"><span>↗</span> ආදායම් / වියදම්</button>
+        <button class="nav-item" data-page="reports"><span>▥</span> ව්‍යාපාර වාර්තා</button>
+        <button class="nav-item" data-page="users"><span>♙</span> පරිශීලකයන්</button>
+        <button class="nav-item" data-page="settings"><span>⚙</span> සැකසුම්</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="secure-dot"></div><span>Shop workspace</span><small>Foundation v0.1</small></div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <button id="menu-toggle" class="icon-button" aria-label="මෙනුව">☰</button>
+        <div><p class="top-eyebrow">SHOP WORKSPACE</p><strong id="page-heading">Dashboard</strong></div>
+        <div class="top-actions"><span class="today" id="today"></span><button class="user-pill" id="user-pill"><span class="user-dot" id="user-dot"></span><span id="active-user">KING</span><span>⌄</span></button></div>
+      </header>
+      <div class="content">
+        <section id="dashboard-page" class="page">
+          <div class="welcome-row"><div><p class="eyebrow">OVERVIEW</p><h1>ආයුබෝවන්, <span id="welcome-user">KING</span> 👋</h1><p class="muted">අද වෙළඳසැලේ තත්ත්වය මෙතැනින් බලන්න.</p></div><div class="date-chip" id="date-chip"></div></div>
+          <div class="stats-grid">
+            <article class="stat-card"><div class="stat-icon blue">▣</div><p>අද විකුණුම්</p><strong>රු. 0.00</strong><small>අද දවසේ මුළු විකුණුම්</small></article>
+            <article class="stat-card"><div class="stat-icon teal">⚖</div><p>විකුණුම් බර</p><strong>0.00 kg</strong><small>අද විකුණූ මුළු බර</small></article>
+            <article class="stat-card"><div class="stat-icon violet">↗</div><p>දළ ලාභය</p><strong>රු. 0.00</strong><small>විකුණුම් පිරිවැය අඩු කළ පසු</small></article>
+            <article class="stat-card"><div class="stat-icon amber">◷</div><p>ශුද්ධ ලාභය</p><strong>රු. 0.00</strong><small>වියදම් අඩු කළ පසු</small></article>
+          </div>
+          <div class="dashboard-grid">
+            <article class="panel quick-panel"><div class="panel-heading"><div><h2>ඉක්මන් ක්‍රියාමාර්ග</h2><p>නිතර භාවිතා කරන කාර්යයන්</p></div><span class="panel-symbol">✦</span></div><div class="quick-actions">
+              <button class="quick-action" data-go="pos"><span class="quick-icon blue">＋</span><span><strong>නව විකුණුමක්</strong><small>POS එක විවෘත කරන්න</small></span><b>›</b></button>
+              <button class="quick-action" data-go="purchases"><span class="quick-icon teal">↓</span><span><strong>මිලදී ගැනීමක්</strong><small>අලුත් තොගයක් ඇතුළත් කරන්න</small></span><b>›</b></button>
+              <button class="quick-action" data-go="customers"><span class="quick-icon violet">♙</span><span><strong>පාරිභෝගික ණය</strong><small>ණය ශේෂ පරීක්ෂා කරන්න</small></span><b>›</b></button>
+              <button class="quick-action" data-go="reports"><span class="quick-icon amber">▥</span><span><strong>වාර්තා බලන්න</strong><small>ව්‍යාපාරයේ ප්‍රගතිය</small></span><b>›</b></button>
+            </div></article>
+            <article class="panel activity-panel"><div class="panel-heading"><div><h2>අද ක්‍රියාකාරකම්</h2><p>පද්ධතියේ නවතම තොරතුරු</p></div><span class="live-label"><i></i> සූදානම්</span></div><div class="empty-state"><div class="empty-icon">◷</div><strong>තවම ක්‍රියාකාරකම් නැත</strong><p>විකුණුම් සහ ගනුදෙනු ආරම්භ කළ පසු මෙහි පෙන්වනු ඇත.</p></div></article>
+          </div>
+          <div class="notice"><span>ⓘ</span><p><strong>ආරම්භක අදියර</strong> — මෙය ඇප් එකේ පෙනුම සහ මෙනු සැකැස්ම සඳහා වූ මූලික අනුවාදයයි. සැබෑ ගනුදෙනු දත්ත තවම සම්බන්ධ කර නැත.</p></div>
+        </section>
+        <section id="placeholder-page" class="page hidden"><div class="placeholder-card"><div class="placeholder-icon">⚙</div><p class="eyebrow">MODULE FOUNDATION</p><h1 id="placeholder-title">මොඩියුලය</h1><p id="placeholder-description">මෙම කොටස ඊළඟ අදියරේදී සකස් කරනු ලැබේ.</p><button class="back-button" data-go="dashboard">← Dashboard වෙත යන්න</button></div></section>
+      </div>
+      <footer class="footer"><span>© බෝට්ටු කරවල වෙළඳසැල</span><span>Built step by step <b>•</b> v0.1</span></footer>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
