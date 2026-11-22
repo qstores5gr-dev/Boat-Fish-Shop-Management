@@ -2,13 +2,104 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)], m
 const defaultData=()=>({batches:[],customers:[],suppliers:[],bills:[],expenses:[],income:[],audit:[],settings:{profitPerKg:300,shopName:'බෝට්ටු කරවල වෙළඳසැල',address:'වැලිකඩ, අධිකාරිගම'},nextInvoice:1});
 let db=load(),user='KING',page='dashboard',calc='0',cart=[],selectedFish='',weightConfirmed=false;
 function load(){try{return JSON.parse(localStorage.getItem('boatFishDB'))||defaultData()}catch(e){return defaultData()}}
-function save(){localStorage.setItem('boatFishDB',JSON.stringify(db))}
+function save(){localStorage.setItem('boatFishDB',JSON.stringify(db));scheduleCloudSave()}
 function log(action,detail=''){db.audit.unshift({id:uid(),date:new Date().toISOString(),user,action,detail});db.audit=db.audit.slice(0,300);save()}
 function toast(s){const t=$('#toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
 const names={dashboard:'Dashboard',pos:'විකුණුම් / POS',purchases:'මිලදී ගැනීම්',stock:'තොග කළමනාකරණය',customers:'පාරිභෝගික ණය',suppliers:'සැපයුම්කරුවන්',bills:'බිල්පත්',expenses:'ආදායම් / වියදම්',reports:'ව්‍යාපාර වාර්තා',users:'පරිශීලකයන්',settings:'සැකසුම්'};
-function enter(u){user=u;$('#login-screen').classList.add('hidden');$('#app').classList.remove('hidden');$('#active-user').textContent=u;$('#user-dot').className='user-dot '+u.toLowerCase();show('dashboard')}
-$$('.user-choice').forEach(b=>b.onclick=()=>enter(b.dataset.user));
-$('#user-pill').onclick=()=>{$('#app').classList.add('hidden');$('#login-screen').classList.remove('hidden')};
+const SUPABASE_URL='https://akncgvkvtnifyrdggrxy.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_gvklV82QR-Hk2xtqV4gWPA_5WuroNc7';
+const supabaseClient=window.supabase?.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let cloudReady=false,cloudRevision=0,cloudDirty=false,cloudSaving=false,cloudConflict=false,cloudSaveTimer=null,cloudChannel=null;
+function showAuthPanel(mode,message=''){
+  $('#auth-login-panel').hidden=mode!=='login';
+  $('#identity-panel').hidden=mode!=='identity';
+  $('#auth-message').textContent=message;
+}
+function enter(u){user=u;localStorage.setItem('boatFishUser',u);$('#login-screen').classList.add('hidden');$('#app').classList.remove('hidden');$('#active-user').textContent=u;$('#user-dot').className='user-dot '+u.toLowerCase();show('dashboard')}
+$('.user-choice').forEach(b=>b.onclick=()=>enter(b.dataset.user));
+$('#user-pill').onclick=()=>{$('#app').classList.add('hidden');$('#login-screen').classList.remove('hidden');showAuthPanel('identity','Cloud ගිණුම සම්බන්ධයි. KING හෝ QUEEN තෝරන්න.')};
+$('#auth-form').onsubmit=async e=>{
+  e.preventDefault();
+  if(!supabaseClient)return showAuthPanel('login','Supabase library එක load වුණේ නැහැ. Internet සම්බන්ධතාව පරීක්ෂා කරන්න.');
+  const submit=$('#auth-submit');submit.disabled=true;submit.textContent='පිවිසෙමින්...';
+  const email=$('#auth-email').value.trim(),password=$('#auth-password').value;
+  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+  submit.disabled=false;submit.textContent='ඇතුළු වන්න';
+  if(error)return showAuthPanel('login','පිවිසුම අසාර්ථකයි: Email සහ Password පරීක්ෂා කරන්න.');
+  const ok=await prepareCloud(data.user);
+  if(ok)showAuthPanel('identity','සාර්ථකව Cloud එකට සම්බන්ධ වුණා. KING හෝ QUEEN තෝරන්න.');
+};
+$('#auth-signout').onclick=async()=>{
+  if(supabaseClient)await supabaseClient.auth.signOut();
+  cloudReady=false;cloudDirty=false;cloudConflict=false;
+  if(cloudChannel){await supabaseClient.removeChannel(cloudChannel);cloudChannel=null}
+  showAuthPanel('login','ඔබ මෙම උපාංගයෙන් පිටවී ඇත.');
+};
+async function prepareCloud(authUser){
+  try{
+    const {data:member,error:memberError}=await supabaseClient.from('shop_members').select('shop_id,role').eq('user_id',authUser.id).maybeSingle();
+    if(memberError||!member){await supabaseClient.auth.signOut();showAuthPanel('login','මෙම Email එකට කඩේ අවසරය නැහැ.');return false}
+    const {data:row,error}=await supabaseClient.from('shop_state').select('data,revision').eq('id',member.shop_id).single();
+    if(error)throw error;
+    const localRaw=localStorage.getItem('boatFishDB');
+    const cloudEmpty=!row.data||Object.keys(row.data).length===0;
+    if(cloudEmpty){
+      if(localRaw&&!localStorage.getItem('boatFishDB_before_cloud'))localStorage.setItem('boatFishDB_before_cloud',localRaw);
+      db=defaultData();
+    }else{
+      db={...defaultData(),...row.data};
+    }
+    localStorage.setItem('boatFishDB',JSON.stringify(db));
+    cloudRevision=Number(row.revision)||0;cloudReady=true;cloudDirty=false;cloudConflict=false;
+    if(cloudEmpty)scheduleCloudSave();
+    if(cloudChannel)await supabaseClient.removeChannel(cloudChannel);
+    cloudChannel=supabaseClient.channel('shop-state-live')
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'shop_state',filter:'id=eq.'+member.shop_id},payload=>{
+        const fresh=payload.new;
+        if(!fresh||Number(fresh.revision)<=cloudRevision)return;
+        if(cloudDirty||cloudSaving){cloudConflict=true;toast('අනෙක් උපාංගයේ දත්ත වෙනස් වී ඇත. සමමුහුර්ත කිරීම තාවකාලිකව නතර කළා. Refresh කර නැවත උත්සාහ කරන්න.');return}
+        db={...defaultData(),...(fresh.data||{})};cloudRevision=Number(fresh.revision)||0;
+        localStorage.setItem('boatFishDB',JSON.stringify(db));
+        if(!$('#app').classList.contains('hidden'))render();
+        toast('අලුත් Cloud දත්ත ලැබුණා');
+      }).subscribe();
+    return true;
+  }catch(err){
+    cloudReady=false;
+    showAuthPanel('login','Cloud සම්බන්ධතාවයේ ගැටලුවක්: '+(err.message||'නැවත උත්සාහ කරන්න'));
+    return false;
+  }
+}
+function scheduleCloudSave(){
+  if(!cloudReady||cloudConflict)return;
+  cloudDirty=true;clearTimeout(cloudSaveTimer);
+  cloudSaveTimer=setTimeout(pushCloudData,650);
+}
+async function pushCloudData(){
+  if(!cloudReady||!cloudDirty||cloudSaving||cloudConflict)return;
+  cloudSaving=true;
+  const snapshot=JSON.parse(JSON.stringify(db)),expected=cloudRevision;
+  const {data,error}=await supabaseClient.rpc('save_shop_state',{p_expected_revision:expected,p_data:snapshot});
+  cloudSaving=false;
+  if(error){cloudConflict=true;toast('Cloud Sync දෝෂයක්: '+error.message);return}
+  if(!data||!data.length){
+    cloudConflict=true;
+    toast('වෙනත් උපාංගයක දත්ත වෙනස් වී ඇත. මේ උපාංගයේ වෙනස්කම් Cloud එකට යැවීම නතර කළා. Refresh කර නවතම දත්ත ලබාගන්න.');
+    return;
+  }
+  cloudRevision=Number(data[0].new_revision)||expected+1;
+  cloudDirty=false;
+  if(JSON.stringify(db)!==JSON.stringify(snapshot))scheduleCloudSave();
+}
+function enterWithExistingSession(){
+  if(!supabaseClient){showAuthPanel('login','Supabase library එක load වුණේ නැහැ. Internet සම්බන්ධතාව පරීක්ෂා කරන්න.');return}
+  supabaseClient.auth.getSession().then(async({data,error})=>{
+    if(error||!data.session){showAuthPanel('login','ඔබගේ Email සහ Password භාවිතයෙන් පිවිසෙන්න.');return}
+    const ok=await prepareCloud(data.session.user);
+    if(ok)showAuthPanel('identity','ඔබ දැනටමත් Cloud එකට පිවිසී ඇත. KING හෝ QUEEN තෝරන්න.');
+  });
+}
+enterWithExistingSession();
 $('#menu-toggle').onclick=()=>$('#sidebar').classList.toggle('open');
 $$('.nav-item').forEach(b=>b.onclick=()=>show(b.dataset.page));
 function show(p){page=p;$('#page-heading').textContent=names[p];$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.page===p));$('#sidebar').classList.remove('open');render()}
@@ -20,7 +111,7 @@ function btn(text,cls='primary',type='submit'){return '<button class="btn '+cls+
 function empty(msg){return '<div class="empty-box">'+msg+'</div>'}
 function stockByName(n){return db.batches.filter(b=>b.name===n&&b.remaining>0).reduce((s,b)=>s+b.remaining,0)}
 function fishNames(){return [...new Set(db.batches.map(b=>b.name))]}
-function dashboard(){let sales=db.bills.filter(b=>b.date===today()),total=sales.reduce((s,b)=>s+b.total,0),weight=sales.reduce((s,b)=>s+b.weight,0),gross=sales.reduce((s,b)=>s+b.profit,0),costs=db.expenses.filter(e=>e.date===today()).reduce((s,e)=>s+e.amount,0);return shell('ආයුබෝවන්, '+user+' 👋','අද වෙළඳසැලේ තත්ත්වය',`<div class="dashboard-page"><div class="stats-grid"><article class="stat-card"><p>අද විකුණුම්</p><strong>${money(total)}</strong></article><article class="stat-card"><p>විකුණුම් බර</p><strong>${weight.toFixed(2)} kg</strong></article><article class="stat-card"><p>දළ ලාභය</p><strong>${money(gross)}</strong></article><article class="stat-card"><p>ශුද්ධ ලාභය</p><strong>${money(gross-costs)}</strong></article></div><div class="action-grid"><button class="quick-action" data-go="pos">＋ නව විකුණුම</button><button class="quick-action" data-go="purchases">＋ තොග මිලදී ගැනීම</button><button class="quick-action" data-go="customers">♙ පාරිභෝගික ණය</button><button class="quick-action" data-go="reports">▥ වාර්තා</button></div><div class="panel"><h2>අද ක්‍රියාකාරකම්</h2>${db.audit.slice(0,6).map(a=>'<p class="activity-line"><b>'+a.user+'</b> · '+a.action+' <small>'+new Date(a.date).toLocaleString()+'</small></p>').join('')||empty('තවම ක්‍රියාකාරකම් නැත')}</div><div class="notice">දත්ත දැනට භාවිතා කරන මෙම බ්‍රවුසරයේ පමණක් සුරැකේ. බැකප් එකක් නිතර ලබාගන්න.</div></div>`)}
+function dashboard(){let sales=db.bills.filter(b=>b.date===today()),total=sales.reduce((s,b)=>s+b.total,0),weight=sales.reduce((s,b)=>s+b.weight,0),gross=sales.reduce((s,b)=>s+b.profit,0),costs=db.expenses.filter(e=>e.date===today()).reduce((s,e)=>s+e.amount,0);return shell('ආයුබෝවන්, '+user+' 👋','අද වෙළඳසැලේ තත්ත්වය',`<div class="dashboard-page"><div class="stats-grid"><article class="stat-card"><p>අද විකුණුම්</p><strong>${money(total)}</strong></article><article class="stat-card"><p>විකුණුම් බර</p><strong>${weight.toFixed(2)} kg</strong></article><article class="stat-card"><p>දළ ලාභය</p><strong>${money(gross)}</strong></article><article class="stat-card"><p>ශුද්ධ ලාභය</p><strong>${money(gross-costs)}</strong></article></div><div class="action-grid"><button class="quick-action" data-go="pos">＋ නව විකුණුම</button><button class="quick-action" data-go="purchases">＋ තොග මිලදී ගැනීම</button><button class="quick-action" data-go="customers">♙ පාරිභෝගික ණය</button><button class="quick-action" data-go="reports">▥ වාර්තා</button></div><div class="panel"><h2>අද ක්‍රියාකාරකම්</h2>${db.audit.slice(0,6).map(a=>'<p class="activity-line"><b>'+a.user+'</b> · '+a.action+' <small>'+new Date(a.date).toLocaleString()+'</small></p>').join('')||empty('තවම ක්‍රියාකාරකම් නැත')}</div><div class="notice">Cloud Sync සක්‍රියයි. දත්ත Cloud එකේ සුරැකේ; ආරක්ෂාව සඳහා JSON බැකප් එකක්ද නිතර ලබාගන්න.</div></div>`)}
 function purchasePage(){return shell('තොග මිලදී ගැනීම්','එක් මිලදී ගැනීමක් වෙනම batch එකක් ලෙස සුරැකේ. COD ගාස්තුව වර්ග ගණනට සමානව බෙදේ.',`<form id="purchase-form" class="panel form-panel"><div class="form-grid">${field('සැපයුම්කරු','supplier','text','නම')}${field('දිනය','date','date')}${field('COD / තැපැල් ගාස්තුව (රු.)','cod','number','0')}${field('අපේක්ෂිත ලාභය / kg (රු.)','profit','number',db.settings.profitPerKg)}</div><h3>මිලදී ගත් කරවල වර්ග</h3><div id="purchase-lines"><div class="purchase-line"><input name="fish" placeholder="කරවල වර්ගය" required><input name="kg" type="number" step=".001" min=".001" placeholder="බර kg" required><input name="cost" type="number" step=".01" min="0" placeholder="මිලදීගත් මුළු මිල රු." required></div></div><div class="form-actions"><button type="button" class="btn secondary" id="add-line">＋ තවත් වර්ගයක්</button>${btn('මිලදී ගැනීම සුරකින්න')}</div></form><div class="panel"><h3>මිලදී ගැනීම් ඉතිහාසය</h3>${table(['දිනය','වර්ගය','බර','පිරිවැය/kg','ඉතිරි බර'],db.batches.map(b=>[b.date,b.name,b.kg.toFixed(2)+' kg',money(b.costPerKg),b.remaining.toFixed(2)+' kg']))}</div>`)}
 function table(head,rows){if(!rows.length)return empty('තොරතුරු තවම නැත');return '<div class="table-wrap"><table><thead><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'}
 function posPage(){let ns=fishNames();return shell('විකුණුම් / POS','කරවල වර්ගය තෝරන්න. බර ඇතුළත් කිරීමට කැල්කියුලේටරය විවෘත කරන්න.',`<div class="pos-layout"><section class="panel pos-main-panel"><h3>කරවල වර්ග</h3><div class="fish-list">${ns.map(n=>'<button class="fish-btn '+(selectedFish===n?'chosen':'')+'" data-fish="'+n+'"><b>'+n+'</b><small>ඉතිරි '+stockByName(n).toFixed(2)+' kg</small></button>').join('')||empty('පළමුව මිලදී ගැනීම් පිටුවෙන් තොග ඇතුළත් කරන්න')}</div><div class="divider"></div><h3>පාරිභෝගිකයා</h3><select id="pos-customer"><option value="">සාමාන්‍ය පාරිභෝගිකයා</option>${db.customers.map(c=>'<option value="'+c.id+'">'+c.name+' · '+c.id+'</option>').join('')}</select><button class="btn primary full mobile-calc-open" id="open-calculator">⌨️ බර ඇතුළත් කරන්න</button></section><section class="panel calculator"><div class="calc-drawer-head"><strong>බර ඇතුළත් කරන්න</strong><button type="button" class="calc-close" id="close-calculator" aria-label="Close">×</button></div><div class="calc-display"><small id="calc-label">${selectedFish||'බර / kg'}</small><strong id="calc-value">${calc}</strong></div><div class="calc-keys">${['7','8','9','⌫','4','5','6','C','1','2','3','00','0','.','000','✓'].map(k=>'<button class="calc-key '+(k==='⌫'?'delete':k==='C'?'clear':k==='✓'?'confirm':'')+'" data-key="'+k+'">'+k+'</button>').join('')}</div></section></div><div class="weight-entry-row"><div><small>ඇතුළත් කළ බර</small><strong id="confirmed-weight">${weightConfirmed?calc+' kg':'—'}</strong></div><button class="btn primary" id="add-cart">තොගයට එක් කරන්න</button></div><div class="panel"><h3>විකුණුම් ලැයිස්තුව</h3><div id="cart-view">${cartView()}</div><div class="form-grid payment-grid"><label class="field"><span>ගෙවීමේ ක්‍රමය</span><select id="pay-type"><option value="cash">මුදල්</option><option value="credit">ණයට</option><option value="partial">කොටසක් ගෙවීම</option></select></label><label class="field"><span>දැන් ගෙවන මුදල (රු.)</span><input id="paid-now" type="number" min="0" step=".01" value="0"></label></div><div class="cart-total" id="cart-total">මුළු එකතුව: ${money(cart.reduce((s,x)=>s+x.total,0))}</div><button class="btn success full" id="complete-sale">විකිණීම සම්පූර්ණ කර බිල්පත සකස් කරන්න</button></div>`)}
@@ -55,7 +146,7 @@ function reportChart(rows){
 }
 function reportsPage(){let rows=reportRows(),sales=rows.reduce((a,x)=>a+x.sales,0),profit=rows.reduce((a,x)=>a+x.profit,0),expenses=rows.reduce((a,x)=>a+x.expenses,0),income=rows.reduce((a,x)=>a+x.income,0);let periodLabel=reportPeriod==='daily'?'පසුගිය දින 7':reportPeriod==='weekly'?'පසුගිය සති 8':'පසුගිය මාස 12';return shell('ව්‍යාපාර වාර්තා','දෛනික, සතිපතා සහ මාසික ආදායම් හා ලාභ ප්‍රවණතා.',`<div class="report-periods"><button class="btn ${reportPeriod==='daily'?'primary':'secondary'}" data-report-period="daily">දෛනික</button><button class="btn ${reportPeriod==='weekly'?'primary':'secondary'}" data-report-period="weekly">සතිපතා</button><button class="btn ${reportPeriod==='monthly'?'primary':'secondary'}" data-report-period="monthly">මාසික</button></div><div class="stats-grid"><article class="stat-card"><p>${periodLabel} විකුණුම්</p><strong>${money(sales)}</strong></article><article class="stat-card"><p>දළ ලාභය</p><strong>${money(rows.reduce((a,x)=>a+x.profit+x.expenses-x.income,0))}</strong></article><article class="stat-card"><p>අමතර වියදම්</p><strong>${money(expenses)}</strong></article><article class="stat-card"><p>ශුද්ධ ලාභය</p><strong>${money(profit)}</strong></article></div><div class="panel"><div class="report-chart-heading"><div><h3>ආදායම් සහ ලාභ ප්‍රවණතාව</h3><p class="muted">${periodLabel} · රුපියල්</p></div><div class="chart-legend"><span><i class="legend-sales"></i> විකුණුම්</span><span><i class="legend-profit"></i> ශුද්ධ ලාභය</span></div></div>${reportChart(rows)}</div><div class="panel"><h3>${periodLabel} විස්තර</h3>${table(['කාලය','බිල්පත්','විකුණුම්','වියදම්','වෙනත් ආදායම්','ශුද්ධ ලාභය'],rows.slice().reverse().map(x=>[x.label,x.bills,money(x.sales),money(x.expenses),money(x.income),money(x.profit)]))}</div>`)}
 function usersPage(){return shell('පරිශීලකයන්','KING සහ QUEEN දෙදෙනාටම සමාන බලතල. වර්ණ දෙක භාවිතා කරන්නේ ක්‍රියාකාරකම හඳුනාගැනීමට පමණි.',`<div class="stats-grid"><article class="stat-card"><p>KING</p><strong>සම්පූර්ණ අවසර</strong><small>නිල් හඳුනාගැනීම</small></article><article class="stat-card"><p>QUEEN</p><strong>සම්පූර්ණ අවසර</strong><small>කොළ හඳුනාගැනීම</small></article></div><div class="panel"><h3>ක්‍රියාකාරකම් සටහන (Audit Log)</h3>${table(['වේලාව','ගිණුම','ක්‍රියාව','විස්තර'],db.audit.map(a=>[new Date(a.date).toLocaleString(),a.user,a.action,a.detail]))}</div>`)}
-function settingsPage(){return shell('සැකසුම් සහ දත්ත බැකප්','දත්ත අපනයනය කර ආරක්ෂිත තැනක තබාගන්න. වෙනත් පරිගණකයකට ස්වයංක්‍රීයව සමමුහුර්ත නොවේ.',`<form id="settings-form" class="panel form-panel"><h3>වෙළඳසැල් සැකසුම්</h3>${field('වෙළඳසැලේ නම','shopName','text',db.settings.shopName)}${field('ලිපිනය','address','text',db.settings.address)}${field('අපේක්ෂිත ලාභය / kg (රු.)','profitPerKg','number',db.settings.profitPerKg)}${btn('සැකසුම් සුරකින්න')}</form><div class="panel"><h3>දත්ත කළමනාකරණය</h3><div class="button-row"><button class="btn secondary" id="export-data">දත්ත බැකප් බාගන්න (JSON)</button><label class="btn secondary file-label">බැකප් එකක් නැවත ඇතුළත් කරන්න<input type="file" id="import-data" accept=".json,application/json" hidden></label><button class="btn danger" id="clear-data">සියලු දත්ත මකා දමන්න</button></div></div>`)}
+function settingsPage(){return shell('සැකසුම් සහ දත්ත බැකප්','දත්ත Cloud එක සමඟ සමමුහුර්ත වේ. ආරක්ෂාව සඳහා බැකප් එකක්ද තබාගන්න.',`<form id="settings-form" class="panel form-panel"><h3>වෙළඳසැල් සැකසුම්</h3>${field('වෙළඳසැලේ නම','shopName','text',db.settings.shopName)}${field('ලිපිනය','address','text',db.settings.address)}${field('අපේක්ෂිත ලාභය / kg (රු.)','profitPerKg','number',db.settings.profitPerKg)}${btn('සැකසුම් සුරකින්න')}</form><div class="panel"><h3>දත්ත කළමනාකරණය</h3><div class="button-row"><button class="btn secondary" id="export-data">දත්ත බැකප් බාගන්න (JSON)</button><label class="btn secondary file-label">බැකප් එකක් නැවත ඇතුළත් කරන්න<input type="file" id="import-data" accept=".json,application/json" hidden></label><button class="btn danger" id="clear-data">සියලු දත්ත මකා දමන්න</button></div></div>`)}
 function render(){const map={dashboard:dashboard,pos:posPage,purchases:purchasePage,stock:stockPage,customers:customerPage,suppliers:supplierPage,bills:billsPage,expenses:expensesPage,reports:reportsPage,users:usersPage,settings:settingsPage};$('.content').classList.toggle('dashboard-content',page==='dashboard');$('#page-content').classList.toggle('dashboard-active',page==='dashboard');$('#page-content').innerHTML=map[page]();bindPage()}
 function bindPage(){
 if(page==='reports')$('[data-report-period]').forEach(b=>b.onclick=()=>{reportPeriod=b.dataset.reportPeriod;render()});
