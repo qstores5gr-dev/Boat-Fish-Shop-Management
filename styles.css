@@ -171,3 +171,5 @@
   .weight-entry-row strong{font-size:21px}
   .weight-entry-row .btn{min-width:0;padding:12px 14px}
 }
+
+@media(max-width:720px){.pos-layout{touch-action:pan-y;overscroll-behavior-x:contain}.pos-layout .pos-main-panel{touch-action:pan-y}}
