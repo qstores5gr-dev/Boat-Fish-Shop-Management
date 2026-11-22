@@ -173,3 +173,5 @@
 }
 
 @media(max-width:720px){.pos-layout{touch-action:pan-y;overscroll-behavior-x:contain}.pos-layout .pos-main-panel{touch-action:pan-y}}
+
+@media(max-width:720px){#page-content{touch-action:pan-y;overscroll-behavior-x:contain}}
