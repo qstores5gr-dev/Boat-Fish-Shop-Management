@@ -100,3 +100,18 @@
 .calc-key.clear{background:#fff0f0!important;color:#c04444!important;border-color:#f4d4d4!important}
 .calc-key.confirm{background:#e6f7ee!important;color:#188451!important;border-color:#c6ead5!important}
 @media(max-width:720px){#page-content:has(.dashboard-page){padding:15px;border-radius:15px}#page-content:has(.dashboard-page) .page-head{padding:3px 2px 14px}#page-content:has(.dashboard-page) .page-head h1{font-size:23px}.calc-display{padding:17px}.calc-display strong{font-size:36px!important}.calc-key{min-height:58px!important}}
+
+
+/* Reports: responsive income and profit line chart */
+.report-periods{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 16px}
+.report-periods .btn{min-width:94px}
+.report-chart-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.report-chart-heading h3{margin:0 0 5px}
+.report-chart-heading .muted{font-size:12px;margin:0}
+.chart-legend{display:flex;gap:15px;flex-wrap:wrap;color:#65798d;font-size:11px}
+.chart-legend span{display:flex;align-items:center;gap:6px}
+.chart-legend i{display:inline-block;width:17px;height:3px;border-radius:3px}
+.legend-sales{background:#347bd2}.legend-profit{background:#18a36a}
+.report-chart-wrap{width:100%;overflow-x:auto;margin-top:15px}
+.report-chart{display:block;width:100%;min-width:520px;height:auto}
+@media(max-width:720px){.report-periods{display:grid;grid-template-columns:repeat(3,1fr)}.report-periods .btn{min-width:0;padding:11px 8px;font-size:13px}.report-chart-heading{display:block}.chart-legend{margin-top:12px}.report-chart{min-width:560px}}
