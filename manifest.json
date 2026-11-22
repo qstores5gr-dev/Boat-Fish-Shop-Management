@@ -1,0 +1,10 @@
+{
+  "name": "බෝට්ටු කරවල වෙළඳසැල",
+  "short_name": "Boat Fish Shop",
+  "description": "බෝට්ටු කරවල වෙළඳසැල කළමනාකරණ පද්ධතිය",
+  "lang": "si",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#10243a"
+}
