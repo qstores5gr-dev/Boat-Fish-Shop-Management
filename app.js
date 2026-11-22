@@ -16,7 +16,7 @@ function showAuthPanel(mode,message=''){
   $('#auth-message').textContent=message;
 }
 function enter(u){user=u;localStorage.setItem('boatFishUser',u);$('#login-screen').classList.add('hidden');$('#app').classList.remove('hidden');$('#active-user').textContent=u;$('#user-dot').className='user-dot '+u.toLowerCase();show('dashboard')}
-$('.user-choice').forEach(b=>b.onclick=()=>enter(b.dataset.user));
+$$('.user-choice').forEach(b=>b.onclick=()=>enter(b.dataset.user));
 $('#user-pill').onclick=()=>{$('#app').classList.add('hidden');$('#login-screen').classList.remove('hidden');showAuthPanel('identity','Cloud ගිණුම සම්බන්ධයි. KING හෝ QUEEN තෝරන්න.')};
 $('#auth-form').onsubmit=async e=>{
   e.preventDefault();
