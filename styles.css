@@ -175,3 +175,11 @@
 @media(max-width:720px){.pos-layout{touch-action:pan-y;overscroll-behavior-x:contain}.pos-layout .pos-main-panel{touch-action:pan-y}}
 
 @media(max-width:720px){#page-content{touch-action:pan-y;overscroll-behavior-x:contain}}
+
+/* Cloud authentication screen */
+.auth-form{display:grid;gap:14px;text-align:left;margin-top:18px}
+.auth-form .field{font-size:13px}
+.auth-form .field input{width:100%;min-height:48px;border:1px solid #dce5ee;border-radius:9px;padding:12px;font:15px inherit}
+.auth-form .btn{margin-top:4px}
+.auth-signout{display:block;margin:15px auto 0}
+#auth-message{min-height:22px}
