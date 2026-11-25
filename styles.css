@@ -183,3 +183,30 @@
 .auth-form .btn{margin-top:4px}
 .auth-signout{display:block;margin:15px auto 0}
 #auth-message{min-height:22px}
+
+/* Purchase pricing calculator and clearer mobile typography */
+.purchase-line-head{display:grid;grid-template-columns:1.15fr .65fr 1fr .85fr;gap:9px;padding:0 2px 7px;color:#61768b;font-size:12px;font-weight:700}
+.purchase-line{grid-template-columns:1.15fr .65fr 1fr .85fr;align-items:center}
+.purchase-line input{width:100%;min-width:0;min-height:46px;font-size:14px}
+.purchase-line-preview{grid-column:1/-1;padding:9px 12px;background:#eff6fc;border-radius:8px;color:#24577d;font-size:13px;font-weight:700}
+.purchase-preview-summary{margin-top:14px;padding:13px 15px;background:#eaf5ef;border:1px solid #d4eadc;border-radius:10px;color:#236344;font-size:14px;font-weight:700}
+@media(max-width:720px){
+ .page-head h1{font-size:25px;line-height:1.45}
+ .page-head .muted{font-size:15px;line-height:1.75}
+ .panel{padding:18px}
+ .panel h2,.panel h3{font-size:19px;line-height:1.55}
+ .field{font-size:15px;gap:9px}
+ .field input,.field select,.panel>select,.pos-layout select{font-size:17px;min-height:54px;padding:13px}
+ .purchase-line-head{display:none}
+ .purchase-line{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:13px;margin:12px 0;border:1px solid #e0e8f0;border-radius:12px;background:#fbfdff}
+ .purchase-line input{font-size:16px;min-height:54px;padding:13px}
+ .purchase-line input:first-child{grid-column:1/-1}
+ .purchase-line-preview{font-size:14px;line-height:1.7}
+ .purchase-preview-summary{font-size:15px;line-height:1.7}
+ .table-wrap table{font-size:14px}
+ .table-wrap td,.table-wrap th{padding:13px 11px}
+ .nav-item{font-size:15px}
+ .topbar strong{font-size:19px}
+ .btn{font-size:15px;min-height:52px}
+}
+@media(max-width:380px){.purchase-line{grid-template-columns:1fr}.purchase-line input:first-child{grid-column:auto}}
