@@ -166,7 +166,7 @@ if(page==='purchases'){
   e.preventDefault();
   const f=new FormData(form),rows=$('#purchase-lines .purchase-line');
   const lines=rows.map(el=>({name:el.querySelector('[name=fish]').value.trim(),kg:num(el.querySelector('[name=kg]').value),costPerKg:num(el.querySelector('[name=costPerKg]').value),profitPerKg:num(el.querySelector('[name=profitPerKg]').value)}));
-  if(!lines.length||lines.some(x=>!x.name||x.kg<=0||!elValue(rows[lines.indexOf(x)],'costPerKg')))return toast('සියලු කරවල වර්ගවල බර සහ මිල / kg ඇතුළත් කරන්න');
+  if(!lines.length||lines.some(x=>!x.name||x.kg<=0||elValue(rows[lines.indexOf(x)],'costPerKg')===''))return toast('සියලු කරවල වර්ගවල බර සහ මිල / kg ඇතුළත් කරන්න');
   const cod=num(f.get('cod')),totalKg=lines.reduce((s,x)=>s+x.kg,0),codPerKg=totalKg?cod/totalKg:0,supplierName=(f.get('supplier')||'').trim();
   lines.forEach(x=>{const landedCost=x.costPerKg+codPerKg;db.batches.push({id:uid(),date:f.get('date')||today(),name:x.name,kg:x.kg,remaining:x.kg,costPerKg:landedCost,baseCostPerKg:x.costPerKg,codPerKg,profitPerKg:x.profitPerKg,sellPricePerKg:landedCost+x.profitPerKg,supplier:supplierName})});
   if(supplierName){let sp=db.suppliers.find(s=>s.name.toLowerCase()===supplierName.toLowerCase());if(!sp){sp={id:'SUP-'+uid(),name:supplierName,phone:'',balance:0,payments:[]};db.suppliers.push(sp)}sp.balance+=lines.reduce((sum,x)=>sum+x.costPerKg*x.kg,0)}
